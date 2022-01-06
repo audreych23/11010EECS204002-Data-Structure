@@ -1,1 +1,1 @@
-# 11010EECS204002-Data-Structure
+# ECS204002-Data-Structure
