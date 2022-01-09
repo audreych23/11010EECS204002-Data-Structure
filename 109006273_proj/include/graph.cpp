@@ -1,105 +1,106 @@
-#include <iostream>
-#include <vector>
-#include <climits>
+#include <limits>
+
 #include "graph.hpp"
+
 /* public members */
 
-Graph::Graph (int v, int e) : graph_(v)
+std::ostream& operator<< (std::ostream& out, Node const& node)
 {
-  vertices = v;
-  edges = e;
+  out << "(" << node.to_ << "," << node.distance_ << ")";
+  return out;
 }
 
-void Graph::Insert (int from, int to, int length)
+Graph::Graph (uint64_t size)
 {
-  Pair pair(to-1, length); // off by 1 error
-  Pair pair_temp(from-1, length);
-  graph_[from-1].push_back(pair);
-  graph_[to-1].push_back(pair_temp);
-}
-
-void Graph::InitializeDistance ()
-{
-  // only call once
-  FloydWarshall();
-}
-
-int Graph::GetDistance (int from, int to)
-{
-  return shortest_path_[from-1][to-1]; // only call after Initialize distance
-}
-
-void Graph::Print ()
-{
-  for (int i {}; i < graph_.size(); ++i)
+  graph_ = Vector<Vector<Node>>{size};
+  std::ifstream fin {"test_case/map.txt"};
+  while (fin)
   {
-    auto g {graph_[i]};
-    std::cout << i << '\n';
-    for (int j {}; j < g.size(); ++j)
+    uint64_t from {};
+    uint64_t to {};
+    uint64_t distance {};
+    fin >> from >> to >> distance;
+    if (from)
     {
-      std::cout << "   " << g[j].destination << " " << g[j].length << " " << '\n';
+      graph_[from - 1].PushBack(Node{to - 1, distance});
+      graph_[to - 1].PushBack(Node{from - 1, distance});
     }
+  }
+  {
+    shortest_distances_ = Vector<Vector<uint64_t>>{size};
+    Vector<uint64_t> max_distances {Vector<uint64_t>{size}};
+    for (uint64_t i {}; i != size; ++i) { max_distances[i] = std::numeric_limits<uint64_t>::max(); }
+    for (uint64_t from {}; from != size; ++from) { shortest_distances_[from] = max_distances; }
+    for (uint64_t i {}; i != size; ++i) { shortest_distances_[i][i] = 0; }
+    for (uint64_t from {}; from != size; ++from)
+    {
+      for (uint64_t i {}; i != graph_[from].Size(); ++i)
+      {
+        shortest_distances_[from][graph_[from][i].to_] = graph_[from][i].distance_;
+      }
+    }
+    FloydWarshall();
   }
 }
 
-void Graph::PrintDistance ()
+uint64_t Graph::Distance (uint64_t from, uint64_t to) const
 {
-  for (auto x : shortest_path_)
+  return shortest_distances_[from - 1][to - 1];
+}
+
+std::ostream& operator<< (std::ostream& out, Graph const& graph)
+{
+  out << "graph_:\n";
+  for (uint64_t from {}; from != graph.graph_.Size(); ++from)
   {
-    for (auto y : x)
+    out << from << ": ";
+    if (graph.graph_[from].Size())
     {
-      std::cout << y << ' ';
+      out << graph.graph_[from][0];
+      for (uint64_t i {1}; i != graph.graph_[from].Size(); ++i)
+      {
+        out << " -> " << graph.graph_[from][i];
+      }
     }
-    std::cout << '\n';
+    out << "\n";
   }
+  out << "\nshortest_distances_:\n";
+  for (uint64_t from {}; from != graph.shortest_distances_.Size(); ++from)
+  {
+    if (graph.shortest_distances_.Size())
+    {
+      out << "(" << from << "," << 0 << "," << graph.shortest_distances_[from][0] << ")";
+    }
+    for (uint64_t to {1}; to != graph.shortest_distances_.Size(); ++to)
+    {
+      out << ", " << "(" << from << "," << to << "," << graph.shortest_distances_[from][to] << ")";
+    }
+    out << "\n";
+  }
+  return out;
 }
 
 /* private members */
 
-void Graph::InitializeDistanceMatrix ()
-{
-  // index is the src, first element contains the key (dest) and second element contains contain the weight from src to dest
-
-  // initialize the 2d adjacency matrix
-  for (int i {}; i < graph_.size(); ++i)
-  {
-    std::vector<int> temp(graph_.size());
-    for (int j {}; j < graph_.size(); ++j)
-    {
-      temp[j] = INT_MAX;
-    }
-    shortest_path_.push_back(temp);
-    shortest_path_[i][i] = 0; // diagonal as 0
-  }
-
-  // copy graph to the all_path_shortest_path (2d matrix), and initialize as infinity for the weight
-  for (int i {}; i < graph_.size(); ++i)
-  {
-    auto g {graph_[i]};
-    //std::vector<std::pair<int, int>>::iterator it {g.begin()};
-    for (int j {}; j < g.size(); ++j)
-    {
-      shortest_path_[i][g[j].destination] = g[j].length;
-    }
-  }
-}
-
 void Graph::FloydWarshall ()
 {
-  InitializeDistanceMatrix();
-
-  for (int k {}; k < graph_.size(); ++k)
+  for (uint64_t middle {}; middle != graph_.Size(); ++middle)
   {
-    for (int i {}; i < graph_.size(); ++i)
+    for (uint64_t from {}; from != graph_.Size(); ++from)
     {
-      for (int j {}; j < graph_.size(); ++j)
+      for (uint64_t to {}; to != graph_.Size(); ++to)
       {
-        if(shortest_path_[i][j] > (shortest_path_[i][k] + shortest_path_[k][j]) &&
-        (shortest_path_[i][k] != INT_MAX && shortest_path_[k][j] != INT_MAX))
+        if
+        (
+          shortest_distances_[from][middle] != std::numeric_limits<uint64_t>::max()
+          && shortest_distances_[middle][to] != std::numeric_limits<uint64_t>::max()
+        )
         {
-          shortest_path_[i][j] = shortest_path_[i][k] + shortest_path_[k][j];
+          uint64_t distance {shortest_distances_[from][middle] + shortest_distances_[middle][to]};
+          if (distance < shortest_distances_[from][to]) { shortest_distances_[from][to] = distance; }
         }
       }
     }
   }
+  return;
 }

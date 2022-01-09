@@ -1,7 +1,9 @@
 #ifndef VECTOR_HPP_
 #define VECTOR_HPP_
 
-template <typename T>
+#include <iostream>
+
+template <typename ElementType>
 class Vector
 {
 public:
@@ -13,110 +15,147 @@ public:
   // Vector& operator= (Vector const&); // copy assignment
   // Vector& operator= (Vector&&); // move assignment
 
-  Vector (int size = 0);
-  //Vector (Vector const&) = default; // copy constructor
-  //Vector& operator= (Vector const&); // copy assignment
+  Vector (uint64_t size = 0);
+  Vector (Vector const&); // copy constructor
+  Vector& operator= (Vector const&); // copy assignment
   ~Vector ();
 
-  int Size () const;
-  int Capacity () const;
-  void PushBack (T);
+  uint64_t Size () const;
+  uint64_t Capacity () const;
+  bool IsEmpty () const;
+  void PushBack (ElementType element);
   void PopBack ();
-  T& operator[] (int);
+  ElementType& operator[] (uint64_t index);
+  ElementType const& operator[] (uint64_t index) const;
+
+  /* https://youtu.be/POa_V15je8Y?t=2053 */
+  friend std::ostream& operator<< (std::ostream& out, Vector const& vector)
+  {
+    if (!vector.IsEmpty())
+    {
+      out << vector[0];
+      for (uint64_t i {1}; i != vector.Size(); ++i) { out << " " << vector[i]; }
+    }
+    out << "\n";
+    return out;
+  }
 
 private:
 
-  int CalculateNextPowerOfTwo (int);
-  void Swap (T**, T**);
+  uint64_t CalculateNextPowerOfTwo (uint64_t value);
 
-  int capacity_;
-  int size_;
-  T* data_;
+  uint64_t capacity_;
+  uint64_t size_;
+  ElementType* data_;
 
 };
 
-/* definitions of public member functions */
+/* definition of public member functions */
 
-template <typename T>
-Vector<T>::Vector (int size)
+template <typename ElementType>
+Vector<ElementType>::Vector (uint64_t size)
 {
   capacity_ = CalculateNextPowerOfTwo((size < 4) ? 4 : size);
   size_ = size;
-  data_ = new T [capacity_];
+  data_ = new ElementType [capacity_];
 }
 
-template <typename T>
-Vector<T>::~Vector ()
+template <typename ElementType>
+Vector<ElementType>::Vector (Vector const& vector) // copy constructor
+{
+  if (this != &vector)
+  {
+    capacity_ = vector.capacity_;
+    size_ = vector.size_;
+    data_ = new ElementType [capacity_];
+    for (uint64_t i {}; i != size_; ++i) { data_[i] = vector.data_[i]; }
+  }
+}
+
+template <typename ElementType>
+Vector<ElementType>& Vector<ElementType>::operator= (Vector const& vector) // copy assignment
+{
+  if (this != &vector)
+  {
+    capacity_ = vector.capacity_;
+    size_ = vector.size_;
+    data_ = new ElementType [capacity_];
+    for (uint64_t i {}; i != size_; ++i) { data_[i] = vector.data_[i]; }
+  }
+  return *this;
+}
+
+template <typename ElementType>
+Vector<ElementType>::~Vector ()
 {
   delete [] data_;
 }
 
-template <typename T>
-int Vector<T>::Size () const { return size_; }
+template <typename ElementType>
+uint64_t Vector<ElementType>::Size () const { return size_; }
 
-template <typename T>
-int Vector<T>::Capacity () const { return capacity_; }
+template <typename ElementType>
+uint64_t Vector<ElementType>::Capacity () const { return capacity_; }
 
-template <typename T>
-void Vector<T>::PushBack (T value)
+template <typename ElementType>
+bool Vector<ElementType>::IsEmpty () const { return (size_ == 0); }
+
+template <typename ElementType>
+void Vector<ElementType>::PushBack (ElementType value)
 {
   data_[size_++] = value;
   if (size_ == capacity_)
   {
     capacity_ *= 2;
-    T* temp = new T [capacity_];
-    for (int i {}; i != size_; ++i)
+    ElementType* temp = new ElementType [capacity_];
+    for (uint64_t i {}; i != size_; ++i)
     {
       temp[i] = data_[i];
     }
-    Swap(&temp, &data_);
-    delete [] temp;
+    delete [] data_;
+    data_ = temp;
   }
   return;
 }
 
-template <typename T>
-void Vector<T>::PopBack ()
+template <typename ElementType>
+void Vector<ElementType>::PopBack ()
 {
-  if (size_ > 0)
+  if (size_)
   {
-    if (--size_ == capacity_ / 4)
+    if (capacity_ >= 8)
     {
-      capacity_ /= 2;
-      T* temp = new T [capacity_];
-      for (int i {}; i != size_; ++i)
+      if (--size_ == capacity_ / 4)
       {
-        temp[i] = data_[i];
+        capacity_ /= 2;
+        ElementType* temp = new ElementType [capacity_];
+        for (uint64_t i {}; i != size_; ++i)
+        {
+          temp[i] = data_[i];
+        }
+        delete [] data_;
+        data_ = temp;
       }
-      Swap(&temp, &data_);
-      delete [] temp;
     }
+    else { --size_; }
   }
   return;
 }
 
-template <typename T>
-T& Vector<T>::operator[] (int index)
-{
-  if (index < 0 || index >= size_) { std::cerr << "invalid index\n"; }
-  return data_[index];
-}
+template <typename ElementType>
+ElementType& Vector<ElementType>::operator[] (uint64_t index) { return data_[index]; }
 
-/* definitions of private member functions */
+template <typename ElementType>
+ElementType const& Vector<ElementType>::operator[] (uint64_t index) const { return data_[index]; }
 
-template <typename T>
-int Vector<T>::CalculateNextPowerOfTwo (int value)
+/* definition of private member functions */
+
+template <typename ElementType>
+uint64_t Vector<ElementType>::CalculateNextPowerOfTwo (uint64_t value)
 {
-  int power_of_two {1};
+  uint64_t power_of_two {1};
   while (power_of_two <= value) { power_of_two <<= 1; }
   return power_of_two;
-}
-
-template <typename T>
-void Vector<T>::Swap (T** lhs, T** rhs)
-{
-  T** temp = lhs; lhs = rhs; rhs = temp;
-  return;
 }
 
 #endif
